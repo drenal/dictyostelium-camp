@@ -26,3 +26,6 @@ onvert -delay 20 -loop 0 *.png movie.gif
 - maybe cells on same coordinates could be merged?
 - or at least cells being in the central position? Then calculation would spped up
 - around the end all cells are always active. no refactory period???
+
+
+![movie](movie.gif)

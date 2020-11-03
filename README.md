@@ -17,3 +17,7 @@ governs cAMP spiral wave formation in Dictyostelium Proc. Natl. Acad. Sci. 93 (p
 - The diffusion equation chapter: https://hplgit.github.io/fdm-book/doc/pub/book/sphinx/._book011.html
 - VSCode Python: https://code.visualstudio.com/docs/languages/python
 - cProfile: https://docs.python.org/3/library/profile.html#module-cProfile
+- boundary condition ranges: https://gist.github.com/ilciavo/273b63e90e2d413ec4b1
+- Numpy view vs copy on simple vs advanced indexing: https://scipy-cookbook.readthedocs.io/items/ViewsVsCopies.html
+- maybe book of interest: https://yasoob.me/posts/practical-python-projects-book-released/
+- Singleton class made right: https://python-3-patterns-idioms-test.readthedocs.io/en/latest/Singleton.html
