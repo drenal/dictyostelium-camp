@@ -15,6 +15,8 @@ Version:
 import numpy as np
 import matplotlib.pyplot as plt
 
+from multiprocessing import Pool
+
 from cell import Cell
 
 class Playground:
@@ -40,26 +42,31 @@ class Playground:
     meshsize_x = 100
     meshsize_y = 100
     # mesh-lattice size factor
-    lattice_size_factor = 1
-    
+    lattice_size_factor = 1    
 
 
     def __init__(self, output, cell_threshold_concentration = 20., cell_delta_concentration = 6000., cell_tau = 2.,
                  cell_recovery_time = 20., lattice_size = 1.0, gamma = 0.01, rho = 0.2, meshsize_x = 100, meshsize_y = 100):
-        Playground.cell_threshold_concentration = cell_threshold_concentration
-        Playground.cell_delta_concentration = cell_delta_concentration
-        Playground.cell_tau = cell_tau
-        Playground.cell_recovery_time = cell_recovery_time
-        Playground.lattice_size = lattice_size
-        Playground.gamma = gamma
-        Playground.rho = rho
-        Playground.meshsize_x = meshsize_x
-        Playground.meshsize_y = meshsize_y
+        Playground.cell_threshold_concentration = float(cell_threshold_concentration)
+        Playground.cell_delta_concentration = float(cell_delta_concentration)
+        Playground.cell_tau = float(cell_tau)
+        Playground.cell_recovery_time = float(cell_recovery_time)
+        Playground.lattice_size = float(lattice_size)
+        Playground.gamma = float(gamma)
+        Playground.rho = float(rho)
+        Playground.meshsize_x = int(float(meshsize_x))
+        Playground.meshsize_y = int(float(meshsize_y))
         Playground.lattice_size_factor = int(1/Playground.lattice_size)
 
         self.output = output
 
         self.setupPlayground()
+
+
+    @classmethod
+    def fromstring(cls, from_string):
+        params = from_string.split()
+        return cls(*params)
 
 
     def setupPlayground(self):
@@ -104,97 +111,145 @@ class Playground:
         cell.position = (int(self.c.shape[0] / 2), int(self.c.shape[0] / 2))
         cell.activate()
         cell.make_active_forever()
+        # make beacon stronger
+        cell.multiplier = 10
         self.cells.append(cell)
 
-        self.__update_sources()
-
-        # setup indices for left, right, center for the forward Euler equation
-        # e.g. 4,0,1,2,3
-        self.index_left = np.append(self.c.shape[0] - 1, range(0, self.c.shape[0] - 1))
-        # # e.g. 0,1,2,3,4
-        self.index_center = range(0, self.c.shape[0])
-        # # e.g. 1,2,3,4,0
-        self.index_right = np.append(range(1, self.c.shape[0]), 0)     
-        
-        # plot initial
-        self.plot(0)
-
-        self.__timestep()
-        # plot first step
-        self.plot(1)
-
-
-    def __update_sources(self):
         self.sources = np.zeros((self.nx, self.ny))
-
         for cell in self.cells:
-            x, y = cell.position
-            c = cell.source
+            self.sources[cell.position] = cell.source
 
-            self.sources[x][y] = c
+        self.rows_center = [[i] for i in range(0, self.c.shape[0])]
+        self.columns_from_left = [i for i in np.append(self.c.shape[1] - 1, range(0, self.c.shape[1] - 1))]
+        self.columns_from_right = [i for i in np.append(range(1, self.c.shape[1]), 0)]
+
+        self.rows_from_above = [[i] for i in np.append(self.c.shape[0] - 1, range(0, self.c.shape[0] - 1))]
+        self.columns_center = [i for i in range(0, self.c.shape[1])]        
+        self.rows_from_below = [[i] for i in np.append(range(1, self.c.shape[0]), 0)]
+
+
+    # def __update_sources(self):
+    #     self.sources.fill(0.)
+
+    #     for cell in self.cells:
+    #         #x, y = cell.position
+    #         #c = cell.source
+
+    #         self.sources[cell.position] = cell.source
 
     def __timestep(self):
-        self.c = self.dt * (self.c0[self.index_center][self.index_center] + self.lattice_size * self.lattice_size * ( \
-            np.transpose(self.c0[self.index_left][self.index_center] - 2*self.c0[self.index_center][self.index_center] + self.c0[self.index_right][self.index_center]) / self.dx2 \
-            + (self.c0[self.index_center][self.index_left] - 2 * self.c0[self.index_center][self.index_center] + self.c0[self.index_center][self.index_right]) / self.dy2) - self.gamma * self.c0[self.index_center][self.index_center] + self.sources[self.index_center][self.index_center] * self.dt)
-        # decay: - self.gamma * self.c0[self.index_center][self.index_center]
+        self.c = self.c0 + self.dt * (self.lattice_size * self.lattice_size * ( \
+            (self.c0[self.rows_center, self.columns_from_right] - 2*self.c0 + self.c0[self.rows_center, self.columns_from_left]) / self.dx2 \
+            + (self.c0[self.rows_from_above, self.columns_center] - 2 * self.c0 + self.c0[self.rows_from_below, self.columns_center]) / self.dy2) \
+            - self.gamma * self.c0 + self.sources * self.dt)
+        
+        # concentration is strictly positive number
         np.clip(self.c, 0, None, self.c)
+
         self.c0 = self.c.copy()
-          
 
-    def startSimulation(self, max_steps):
-        # update cAMP sources (initial )
-        for s in range(1, max_steps):
+    def call_update_and_move_of_cells(self, cells, cell_sync):
+        # move cells
+        for cell in cells:
+            cell.update(cell_sync*self.dt, self.c)
+            cell.move(self.c)
+
+    def update_sources(self, cells):
+        for cell in cells:
+            self.sources[cell.position] = cell.source
+
+    def startSimulation(self, max_steps, sampling=10, cell_sync=10, parallelisation=6):
+        # prepare pool of threads 
+        #p = Pool(parallelisation)
+
+        # export initial state
+        self.exportState("{}_{:04d}".format(self.output, 0))
+
+        # do one timestep to incorporate sources into the cAMP concentration
+        self.__timestep()
+        # export state after first step
+        self.exportState("{}_{:04d}".format(self.output, 1))
+
+        # start simulation
+        s0_sampling = 0
+        s0_sync = 0
+        for s in range(1, max_steps+1):
             self.__timestep()
+            s0_sampling += 1
+            s0_sync += 1
 
-            if s % 10 == 0:
+            if s0_sampling == sampling:
+                s0_sampling = 0
+
+                self.exportState("{}_{:04d}".format(self.output, s))
+
+            if s0_sync == cell_sync:
+                s0_sync = 0
+
+                # move cells -- this can be parallelised
+                #block_length = int(len(self.cells)/parallelisation)+1
+                #to_be_moved_cells_split = [ (self.cells[i:i+block_length], cell_sync) for i in range(0,len(self.cells),block_length)]
+
+                #results = p.starmap(self.call_update_and_move_of_cells, to_be_moved_cells_split)
+
                 for cell in self.cells:
-                    cell.update(s*self.dt, self.c)
+                    cell.update(cell_sync*self.dt, self.c)
                     cell.move(self.c)
-                    
-                    self.__update_sources()
-                    
-                self.plot(s)
 
-    def plot(self, step):
-        fig, ax = plt.subplots(figsize=(16, 16))
-        
-        im = ax.imshow(self.c, interpolation='bicubic', label="cAMP")
-        fig.colorbar(im)
+                # collapse cells -- this shouldn't be
+                cell_coords = {}
+                to_delete = []
+                for id_cell, cell in enumerate(self.cells):
+                    if cell.position in cell_coords and not cell.cancer:
+                        to_delete.append(id_cell)
+                        self.cells[ cell_coords[cell.position] ].multiplier += 1
+                    else:
+                        cell_coords[cell.position] = id_cell
 
-        cell_dots_x = {"active": [], "dormant": [], "refactory": []}
-        cell_dots_y = {"active": [], "dormant": [], "refactory": []}
-        for cell in self.cells:
-            x, y = cell.position
-            if cell.state == 1:
-                cell_dots_x["active"].append(x)
-                cell_dots_y["active"].append(y)
-            elif cell.state == 2:
-                cell_dots_x["refactory"].append(x)
-                cell_dots_y["refactory"].append(y)
-            else:
-                cell_dots_x["dormant"].append(x)
-                cell_dots_y["dormant"].append(y)
+                for id_cell in sorted(to_delete, reverse=True):
+                    del self.cells[id_cell]
 
+                # set source map based on cells -- this can be parallelised
+                self.sources.fill(0.)
 
-        ax.scatter(x=cell_dots_x["dormant"], y=cell_dots_y["dormant"], label="Cells (dormant)", color="black")
-        ax.scatter(x=cell_dots_x["refactory"], y=cell_dots_y["refactory"], label="Cells (refactory)", color="blue")
-        ax.scatter(x=cell_dots_x["active"], y=cell_dots_y["active"], label="Cells (active)", color="red")
-        
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Simulation at step {}".format(step))
+                #block_length = int(len(self.cells)/parallelisation)+1
+                #to_be_moved_cells_split = [ (self.cells[i:i+block_length], ) for i in range(0,len(self.cells),block_length)]
 
-        ax.legend()
-        fig.tight_layout()
-        plt.savefig("{}_{:03d}.png".format(self.output, step))
+                #results = p.starmap(self.update_sources, to_be_moved_cells_split)
                 
+                for cell in self.cells:
+                    self.sources[cell.position] = cell.source
+                     
 
     def exportState(self, base_path):
-        pass
-        # export cell's position and state
-        # export concentration map
-        # export parameters
+        with open("{}.cells".format(base_path), "w") as cellsfh:
+            for cell in self.cells:
+                cellsfh.write("{}\n".format(cell))
+        
+        with open("{}.playground".format(base_path), "w") as pgfh:
+            pgfh.write("{}\n".format(self))
 
-    def importState(self, base_path):
-        pass
+        np.savetxt("{}.camp".format(base_path), self.c)
+
+    def importCells(self, base_path):
+        del self.cells[:]
+
+        with open("{}.cells".format(base_path), "r") as cellsfh:
+            for line in cellsfh:
+                cell = Cell.fromstring(line)
+                self.cells.append(cell)
+
+    def importCAMP(self, base_path):
+        self.c = np.loadtxt("{}.camp".format(base_path))
+        self.c0 = self.c.copy()
+
+    def __str__(self):
+        return "{} {} {} {} {} {} {} {} {} {}".format(self.output, self.cell_threshold_concentration, self.cell_delta_concentration, self.cell_tau,
+                                             self.cell_recovery_time, self.lattice_size, self.gamma, self.rho, self.meshsize_x, self.meshsize_y)
+
+
+    def __repr__(self):
+        return "{}(output={} c_threshold={} delta_c={} tau={} t_recovery={} lattice={} gamma={} rho={} meshsize_x={} meshsize_y={})".format(
+                                             self.__class__.__name__,
+                                             repr(self.output), repr(self.cell_threshold_concentration), repr(self.cell_delta_concentration), repr(self.cell_tau),
+                                             repr(self.cell_recovery_time), repr(self.lattice_size), repr(self.gamma), repr(self.rho), repr(self.meshsize_x), repr(self.meshsize_y))

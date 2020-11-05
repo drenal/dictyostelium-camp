@@ -27,25 +27,26 @@ def main():
     parser.add_argument('-t', '--tau', help="Timespan of a cell being in excited state", default=2, type=float)
     parser.add_argument('-R', '--recovery', help="Timespan of a cell being resistant to excitation", default=20, type=float)
     parser.add_argument('-m', '--mesh', help="1D size of the 2D mesh to simulate on (it's always a square mesh)", default=10, type=float)
-    parser.add_argument('-s', '--steps', help="Steps to run PDE for", default=100, type=int)
-    parser.add_argument('-e', '--export', help="Export base path")
+    parser.add_argument('-s', '--steps', help="Steps to run PDE for", default=100, type=int, required=True)
     parser.add_argument('-i', '--import', help="Import state from base path's files", dest="importstate")
-    parser.add_argument('-o', '--output', help="Output plots' base")
+    parser.add_argument('-o', '--output', help="Output plots' base", required=True)
+    parser.add_argument('-S', '--sampling', help="Number of steps to sample after", default=10, type=int)
+    parser.add_argument('-y', '--cell-sync', help="Number of steps to synchronize cells after", default=10, type=int)
+    parser.add_argument('-p', '--parallelisation', help="Number of threads to use for parallelisable tasks", default=6, type=int)
     args = parser.parse_args()
 
     if args.importstate:
-        pg = Playground(args.output)
-        pg.importState(args.importstate)
+        pg = Playground.fromstring(open("{}.playground".format(args.importstate), "r").readline())
+        pg.output = args.output
+        pg.importCells(args.importstate)
+        pg.importCAMP(args.importstate)
     else:
-        pg = Playground(args.output, args.threshold, args.camp, args.tau, args.recovery, args.lattice, args.gamma, args.rho, args.mesh, args.mesh)
+        pg = Playground(args.output, args.threshold, args.camp, args.tau, args.recovery, args.lattice,
+                        args.gamma, args.rho, args.mesh, args.mesh)
 
-    pg.startSimulation(args.steps)
+    pg.startSimulation(max_steps = args.steps, cell_sync = args.cell_sync, sampling = args.sampling, parallelisation=args.parallelisation)
 
-    if args.export:
-        pg.exportState(args.export)
-
-
-
+    
 if __name__ == "__main__":
     main()
 
