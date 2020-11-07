@@ -68,36 +68,58 @@ class Cell:
 
 
     def update(self, delta_t, c):
-        self.current_time += delta_t
 
         if self.state == 1:
+            self.current_time += delta_t
+
             if self.current_time > self.tau and not self.cancer:
                 # end being source
                 self.state = 2
                 self.current_time = 0.
                 self.source = 0.
         elif self.state == 2:
+            self.current_time += delta_t
+            
             if self.current_time > self.recovery_time:
                 self.state = 0
                 self.current_time = 0.
         else:
-            if c[self.x][self.y] > self.threshold_concentration:
+            if c[self.x, self.y] > self.threshold_concentration: #or self.cancer:
                 self.activate()
 
 
     def move(self, c):
         if not self.cancer:
-            index_left = np.append(range(c.shape[0] - self.lattice_size_factor, c.shape[0]), range(0, c.shape[0] - self.lattice_size_factor))
-            index_center = range(0, c.shape[0])
-            index_right = np.append(range(self.lattice_size_factor, c.shape[0]), range(0, self.lattice_size_factor))
-            slices = [index_left, index_center, index_right]
+            # index_left = np.append(range(c.shape[0] - self.lattice_size_factor, c.shape[0]), range(0, c.shape[0] - self.lattice_size_factor))
+            # index_center = range(0, c.shape[0])
+            # index_right = np.append(range(self.lattice_size_factor, c.shape[0]), range(0, self.lattice_size_factor))
+            # slices = [index_left, index_center, index_right]
 
+            # build proposal matrix
+            #proposal_values = np.zeros((3, 3))
+            #proposal_coords = np.zeros()
+
+            x_range = [self.x - self.lattice_size_factor, self.x, self.x + self.lattice_size_factor]
+            y_range = [self.y - self.lattice_size_factor, self.y, self.y + self.lattice_size_factor]
+            
             proposal_value = c[self.x, self.y]
             proposed_move = (1,1)
         
-            for idx,vdx in enumerate(slices):
-                for idy,vdy in enumerate(slices):
-                    if np.abs(((c[vdx][vdy])[self.x][self.y] - proposal_value)) > 1e-10:
+            for idx, vdx in enumerate(x_range):
+                if vdx >= c.shape[0]:
+                    vdx = 0
+                elif vdx < 0:
+                    vdx = c.shape[0] - 1 * self.lattice_size_factor
+                    
+                for idy, vdy in enumerate(y_range):
+                    
+                    if vdy >= c.shape[0]:
+                        vdy = 0
+                    elif vdy < 0:
+                        vdy = c.shape[0] - 1 * self.lattice_size_factor
+
+                    if np.abs((c[vdx][vdy] - proposal_value)) > 5e-1:
+                        proposal_value = c[vdx][vdy]
                         proposed_move = (idx,idy)
             
             self.x += (proposed_move[0] - 1) * self.lattice_size_factor
@@ -127,6 +149,7 @@ class Cell:
     def activate(self):
         self.state = 1
         self.source = self.multiplier * self.delta_concentration / self.tau
+        self.current_time = 0.
 
     def make_active_forever(self):
         self.cancer = True

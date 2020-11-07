@@ -74,7 +74,7 @@ class Playground:
         self.nx, self.ny = int(self.meshsize_x/self.lattice_size), int(self.meshsize_y/self.lattice_size)
 
         self.dx2, self.dy2 = self.lattice_size**2, self.lattice_size**2
-        self.dt = self.dx2 * self.dy2 / (2 * self.lattice_size**2 * (self.dx2 + self.dy2))
+        self.dt = 0.5 * self.dx2 * self.dy2 / (2 * self.lattice_size**2 * (self.dx2 + self.dy2))
 
         self.c0 = np.zeros((self.nx, self.ny))
         self.c = self.c0.copy()
@@ -93,14 +93,14 @@ class Playground:
             cell.position = (x,y)
             self.cells.append(cell)
 
-        # number_of_cells_active = 4
-        # self.sources = np.zeros((self.nx, self.ny))
-        # for i in np.random.randint(low=0, high=number_of_cells, size=number_of_cells_active):
-        #     self.cells[i].activate()
+        number_of_cells_active = 10
+        self.sources = np.zeros((self.nx, self.ny))
+        for i in np.random.randint(low=0, high=number_of_cells, size=number_of_cells_active):
+            self.cells[i].activate()
 
-        #     x, y = self.cells[i].position
-        #     c = self.cells[i].source
-        #     self.sources[x, y] = c
+            x, y = self.cells[i].position
+            c = self.cells[i].source
+            self.sources[x, y] = c
 
         # create central source 
         # as if there were the same amount of cells as there are on the mesh 
@@ -109,10 +109,10 @@ class Playground:
                         delta_concentration = self.cell_delta_concentration, tau = self.cell_tau,
                         recovery_time = self.cell_recovery_time, lattice_size_factor=self.lattice_size_factor)
         cell.position = (int(self.c.shape[0] / 2), int(self.c.shape[0] / 2))
-        cell.activate()
-        cell.make_active_forever()
         # make beacon stronger
         cell.multiplier = 10
+        cell.activate()
+        cell.make_active_forever()
         self.cells.append(cell)
 
         self.sources = np.zeros((self.nx, self.ny))
@@ -142,6 +142,7 @@ class Playground:
             (self.c0[self.rows_center, self.columns_from_right] - 2*self.c0 + self.c0[self.rows_center, self.columns_from_left]) / self.dx2 \
             + (self.c0[self.rows_from_above, self.columns_center] - 2 * self.c0 + self.c0[self.rows_from_below, self.columns_center]) / self.dy2) \
             - self.gamma * self.c0 + self.sources * self.dt)
+            # decay: 
         
         # concentration is strictly positive number
         np.clip(self.c, 0, None, self.c)
@@ -183,42 +184,47 @@ class Playground:
 
                 self.exportState("{}_{:04d}".format(self.output, s))
 
+            # collapse cells -- this shouldn't be
+            # cell_coords = {}
+            # to_delete = []
+            # for id_cell, cell in enumerate(self.cells):
+            #     if cell.position in cell_coords and not cell.cancer:
+            #         to_delete.append(id_cell)
+            #         if cell.state == 1:
+            #             self.cells[cell_coords[cell.position]].activate()
+                        
+            #         self.cells[ cell_coords[cell.position] ].multiplier += 1
+            #     else:
+            #         cell_coords[cell.position] = id_cell
+
+            # for id_cell in sorted(to_delete, reverse=True):
+            #     del self.cells[id_cell]
+
+
+            # update cell source
+            for cell in self.cells:
+                cell.update(cell_sync * self.dt, self.c)
+
+            # move cells -- this can be parallelised
+            #block_length = int(len(self.cells)/parallelisation)+1
+            #to_be_moved_cells_split = [ (self.cells[i:i+block_length], cell_sync) for i in range(0,len(self.cells),block_length)]
+
+            #results = p.starmap(self.call_update_and_move_of_cells, to_be_moved_cells_split)
             if s0_sync == cell_sync:
                 s0_sync = 0
-
-                # move cells -- this can be parallelised
-                #block_length = int(len(self.cells)/parallelisation)+1
-                #to_be_moved_cells_split = [ (self.cells[i:i+block_length], cell_sync) for i in range(0,len(self.cells),block_length)]
-
-                #results = p.starmap(self.call_update_and_move_of_cells, to_be_moved_cells_split)
-
                 for cell in self.cells:
-                    cell.update(cell_sync*self.dt, self.c)
                     cell.move(self.c)
 
-                # collapse cells -- this shouldn't be
-                cell_coords = {}
-                to_delete = []
-                for id_cell, cell in enumerate(self.cells):
-                    if cell.position in cell_coords and not cell.cancer:
-                        to_delete.append(id_cell)
-                        self.cells[ cell_coords[cell.position] ].multiplier += 1
-                    else:
-                        cell_coords[cell.position] = id_cell
+            # set source map based on cells -- this can be parallelised
+            self.sources.fill(0.)
 
-                for id_cell in sorted(to_delete, reverse=True):
-                    del self.cells[id_cell]
+            #block_length = int(len(self.cells)/parallelisation)+1
+            #to_be_moved_cells_split = [ (self.cells[i:i+block_length], ) for i in range(0,len(self.cells),block_length)]
 
-                # set source map based on cells -- this can be parallelised
-                self.sources.fill(0.)
-
-                #block_length = int(len(self.cells)/parallelisation)+1
-                #to_be_moved_cells_split = [ (self.cells[i:i+block_length], ) for i in range(0,len(self.cells),block_length)]
-
-                #results = p.starmap(self.update_sources, to_be_moved_cells_split)
-                
-                for cell in self.cells:
-                    self.sources[cell.position] = cell.source
+            #results = p.starmap(self.update_sources, to_be_moved_cells_split)
+            
+            for cell in self.cells:
+                self.sources[cell.position] = cell.source
                      
 
     def exportState(self, base_path):

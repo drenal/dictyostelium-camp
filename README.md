@@ -9,6 +9,8 @@ cooperative biological entities Physical Review E 48(6), 1993](https://www.resea
 governs cAMP spiral wave formation in Dictyostelium Proc. Natl. Acad. Sci. 93 (p.: 6382–6386),
 1996](http://pearl.elte.hu/andras/sysbio3/2015/08_dyctiostelium/levine_pnas_96.pdf)
 
+- [Steven A. Mackey: COMPUTER  SIMULATION  OF  AGGREGATIONIN  DICTYOSTELIUM   DISCOIDEUM](https://jcs.biologists.org/content/joces/33/1/1.full.pdf)
+
 
 ## Resources 
 

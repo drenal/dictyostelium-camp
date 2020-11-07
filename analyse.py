@@ -25,17 +25,18 @@ def plot(step, c, cells, output):
     
     c_threshold = cells[0].threshold_concentration
     # define the colors
-    cmap = mpl.colors.ListedColormap(['w', 'g'])
+    #cmap = mpl.colors.ListedColormap(['w', 'g'])
 
     # create a normalize object the describes the limits of
     # each color
-    if np.max(c) < c_threshold:
-        bounds = [0., 1.0, 1.0]
-    else:
-        bounds = [0., c_threshold / np.max(c), 1.0]
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    #if np.max(c) < c_threshold:
+    #    bounds = [0., 1.0, 1.0]
+    #else:
+    #    bounds = [0., c_threshold / np.max(c), 1.0]
+    #norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-    im = ax.imshow(c, interpolation='none', label="cAMP", cmap=cmap, norm=norm)
+    #im = ax.imshow(c.T, interpolation='none', label="cAMP", cmap=cmap, norm=norm)
+    im = ax.imshow(c.T, interpolation='none')
     cb = fig.colorbar(im)
     cb.set_label("cAMP", fontsize=16)    
 
