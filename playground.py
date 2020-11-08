@@ -10,7 +10,9 @@ Authors:
     - Lenard Szantho <lenard@drenal.eu>
 
 Version:
-    - 0.1 (2020-11-02)
+    - 0.3 (2020-11-07) New logic based on Kessler and Levine (1993) paper
+    - 0.2 (2020-11-04) Bugfixes
+    - 0.1 (2020-11-02) Initial implementation
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -71,10 +73,14 @@ class Playground:
 
     def setupPlayground(self):
         # setup cAMP layer
-        self.nx, self.ny = int(self.meshsize_x/self.lattice_size), int(self.meshsize_y/self.lattice_size)
+        self.nx = int(self.meshsize_x / self.lattice_size)
+        self.ny = int(self.meshsize_y / self.lattice_size)
 
-        self.dx2, self.dy2 = self.lattice_size**2, self.lattice_size**2
-        self.dt = 0.5 * self.dx2 * self.dy2 / (2 * self.lattice_size**2 * (self.dx2 + self.dy2))
+        self.dx2 = self.lattice_size * self.lattice_size
+        self.dy2 = self.lattice_size * self.lattice_size
+        
+        # lowering timestep by a factor of 1/2 to have it stable
+        self.dt = 0.5 * (0.5 * self.dx2 * self.dy2 / (self.lattice_size * self.lattice_size * (self.dx2 + self.dy2)))
 
         self.c0 = np.zeros((self.nx, self.ny))
         self.c = self.c0.copy()
@@ -83,42 +89,60 @@ class Playground:
         number_of_cells = int(self.rho * self.meshsize_x * self.meshsize_y)
 
         self.cells = []
-        for i in range(number_of_cells):
-            x = np.random.randint(low=0, high=self.meshsize_x) * self.lattice_size_factor
-            y = np.random.randint(low=0, high=self.meshsize_y) * self.lattice_size_factor
+        coordinates_in_use = set()
 
+        # Create central beacon
+        cell = Cell(id=0, threshold_concentration=self.cell_threshold_concentration,
+                        delta_concentration = self.cell_delta_concentration, tau = self.cell_tau,
+                        recovery_time=self.cell_recovery_time, lattice_size_factor=self.lattice_size_factor)
+        cell.position = (int(self.nx / 2), int(self.ny / 2))
+        coordinates_in_use.add((int(self.nx / 2), int(self.ny / 2)))
+        cell.multiplier = 10
+        cell.activate()
+        cell.make_active_forever()
+        self.cells.append(cell)
+
+        for i in range(1,number_of_cells):
+            # generate unique coordinates for cell
+            while True:
+                x = np.random.randint(low=0, high=self.meshsize_x) * self.lattice_size_factor
+                y = np.random.randint(low=0, high=self.meshsize_y) * self.lattice_size_factor
+
+                if (x, y) not in coordinates_in_use:
+                    coordinates_in_use.add((x, y))
+                    break
+            
             cell = Cell(id=i, threshold_concentration=self.cell_threshold_concentration,
                         delta_concentration = self.cell_delta_concentration, tau = self.cell_tau,
                         recovery_time = self.cell_recovery_time, lattice_size_factor=self.lattice_size_factor)
             cell.position = (x,y)
             self.cells.append(cell)
 
-        number_of_cells_active = 10
-        self.sources = np.zeros((self.nx, self.ny))
-        for i in np.random.randint(low=0, high=number_of_cells, size=number_of_cells_active):
-            self.cells[i].activate()
+        # ### ACTIVATE N CELLS RANDOMLY BEGINS
 
-            x, y = self.cells[i].position
-            c = self.cells[i].source
-            self.sources[x, y] = c
+        # number_of_cells_active = 10
+        # self.sources = np.zeros((self.nx, self.ny))
+        # for i in np.random.randint(low=0, high=number_of_cells, size=number_of_cells_active):
+        #     self.cells[i].activate()
 
-        # create central source 
-        # as if there were the same amount of cells as there are on the mesh 
-        # already in the center
-        cell = Cell(id=number_of_cells, threshold_concentration=self.cell_threshold_concentration,
-                        delta_concentration = self.cell_delta_concentration, tau = self.cell_tau,
-                        recovery_time = self.cell_recovery_time, lattice_size_factor=self.lattice_size_factor)
-        cell.position = (int(self.c.shape[0] / 2), int(self.c.shape[0] / 2))
-        # make beacon stronger
-        cell.multiplier = 10
-        cell.activate()
-        cell.make_active_forever()
-        self.cells.append(cell)
+        # ACTIVATE N CELLS RANDOMLY ENDS
 
+        # ### CREATE A RANDOM BEACON BEGINS
+
+        # number_of_cells_active = 1
+        # for i in np.random.randint(low=0, high=number_of_cells, size=number_of_cells_active):
+        #     self.cells[i].multiplier = 10
+        #     self.cells[i].activate()
+        #     self.cells[i].make_active_forever()
+
+        # CREATE A RANDOM BEACON ENDS
+
+        # create and update sources
         self.sources = np.zeros((self.nx, self.ny))
         for cell in self.cells:
             self.sources[cell.position] = cell.source
 
+        # create shifted indices for vectorized PDE equation
         self.rows_center = [[i] for i in range(0, self.c.shape[0])]
         self.columns_from_left = [i for i in np.append(self.c.shape[1] - 1, range(0, self.c.shape[1] - 1))]
         self.columns_from_right = [i for i in np.append(range(1, self.c.shape[1]), 0)]
@@ -139,30 +163,16 @@ class Playground:
 
     def __timestep(self):
         self.c = self.c0 + self.dt * (self.lattice_size * self.lattice_size * ( \
-            (self.c0[self.rows_center, self.columns_from_right] - 2*self.c0 + self.c0[self.rows_center, self.columns_from_left]) / self.dx2 \
+            (self.c0[self.rows_center, self.columns_from_right] - 2 * self.c0 + self.c0[self.rows_center, self.columns_from_left]) / self.dx2 \
             + (self.c0[self.rows_from_above, self.columns_center] - 2 * self.c0 + self.c0[self.rows_from_below, self.columns_center]) / self.dy2) \
             - self.gamma * self.c0 + self.sources * self.dt)
-            # decay: 
         
         # concentration is strictly positive number
         np.clip(self.c, 0, None, self.c)
 
         self.c0 = self.c.copy()
 
-    def call_update_and_move_of_cells(self, cells, cell_sync):
-        # move cells
-        for cell in cells:
-            cell.update(cell_sync*self.dt, self.c)
-            cell.move(self.c)
-
-    def update_sources(self, cells):
-        for cell in cells:
-            self.sources[cell.position] = cell.source
-
-    def startSimulation(self, max_steps, sampling=10, cell_sync=10, parallelisation=6):
-        # prepare pool of threads 
-        #p = Pool(parallelisation)
-
+    def startSimulation(self, max_steps, sampling=10):
         # export initial state
         self.exportState("{}_{:04d}".format(self.output, 0))
 
@@ -173,56 +183,42 @@ class Playground:
 
         # start simulation
         s0_sampling = 0
-        s0_sync = 0
         for s in range(1, max_steps+1):
             self.__timestep()
             s0_sampling += 1
-            s0_sync += 1
 
             if s0_sampling == sampling:
                 s0_sampling = 0
-
                 self.exportState("{}_{:04d}".format(self.output, s))
 
-            # collapse cells -- this shouldn't be
-            # cell_coords = {}
-            # to_delete = []
-            # for id_cell, cell in enumerate(self.cells):
-            #     if cell.position in cell_coords and not cell.cancer:
-            #         to_delete.append(id_cell)
-            #         if cell.state == 1:
-            #             self.cells[cell_coords[cell.position]].activate()
-                        
-            #         self.cells[ cell_coords[cell.position] ].multiplier += 1
-            #     else:
-            #         cell_coords[cell.position] = id_cell
-
-            # for id_cell in sorted(to_delete, reverse=True):
-            #     del self.cells[id_cell]
-
-
-            # update cell source
+            coordinates_in_use = set()
+            state_1_cells = []
             for cell in self.cells:
-                cell.update(cell_sync * self.dt, self.c)
+                if cell.position in coordinates_in_use:
+                    print("WARNING: cells with same coordinates, this should never happen!")
 
-            # move cells -- this can be parallelised
-            #block_length = int(len(self.cells)/parallelisation)+1
-            #to_be_moved_cells_split = [ (self.cells[i:i+block_length], cell_sync) for i in range(0,len(self.cells),block_length)]
+                coordinates_in_use.add(cell.position)
 
-            #results = p.starmap(self.call_update_and_move_of_cells, to_be_moved_cells_split)
-            if s0_sync == cell_sync:
-                s0_sync = 0
-                for cell in self.cells:
-                    cell.move(self.c)
+                cell.update(self.dt, self.c)
 
-            # set source map based on cells -- this can be parallelised
+                if cell.state == 1 and not cell.moved:
+                    state_1_cells.append(cell.id)
+
+            for cell_id in state_1_cells:
+                # move cells
+                for proposed_coord in self.cells[cell_id].propose_move(self.c):
+                    if not proposed_coord in coordinates_in_use:
+                        coordinates_in_use.remove(self.cells[cell_id].position)
+                        #self.sources[self.cells[cell_id].position] = 0.
+
+                        self.cells[cell_id].move(proposed_coord)
+
+                        coordinates_in_use.add(self.cells[cell_id].position)
+                        #self.sources[self.cells[cell_id].position] = self.cells[cell_id].source
+
+                        break
+
             self.sources.fill(0.)
-
-            #block_length = int(len(self.cells)/parallelisation)+1
-            #to_be_moved_cells_split = [ (self.cells[i:i+block_length], ) for i in range(0,len(self.cells),block_length)]
-
-            #results = p.starmap(self.update_sources, to_be_moved_cells_split)
-            
             for cell in self.cells:
                 self.sources[cell.position] = cell.source
                      

@@ -22,7 +22,7 @@ def main():
     parser.add_argument('-a', '--lattice', help="Lattice size", default=1, type=float)
     parser.add_argument('-g', '--gamma', help="Gamma: decay constant", default=0.5, type=float)
     parser.add_argument('-r', '--rho', help="Rho: density of cells", default=0.2, type=float)
-    parser.add_argument('-c', '--threshold', help="Threshol concentration", default=20., type=float)
+    parser.add_argument('-c', '--threshold', help="Threshold concentration", default=20., type=float)
     parser.add_argument('-d', '--camp', help="Amount of cAMP released by excited cell over period of tau", default=6000, type=float)
     parser.add_argument('-t', '--tau', help="Timespan of a cell being in excited state", default=2, type=float)
     parser.add_argument('-R', '--recovery', help="Timespan of a cell being resistant to excitation", default=20, type=float)
@@ -31,8 +31,6 @@ def main():
     parser.add_argument('-i', '--import', help="Import state from base path's files", dest="importstate")
     parser.add_argument('-o', '--output', help="Output plots' base", required=True)
     parser.add_argument('-S', '--sampling', help="Number of steps to sample after", default=10, type=int)
-    parser.add_argument('-y', '--cell-sync', help="Number of steps to synchronize cells after", default=10, type=int)
-    parser.add_argument('-p', '--parallelisation', help="Number of threads to use for parallelisable tasks", default=6, type=int)
     args = parser.parse_args()
 
     if args.importstate:
@@ -44,7 +42,7 @@ def main():
         pg = Playground(args.output, args.threshold, args.camp, args.tau, args.recovery, args.lattice,
                         args.gamma, args.rho, args.mesh, args.mesh)
 
-    pg.startSimulation(max_steps = args.steps, cell_sync = args.cell_sync, sampling = args.sampling, parallelisation=args.parallelisation)
+    pg.startSimulation(max_steps = args.steps, sampling = args.sampling)
 
     
 if __name__ == "__main__":

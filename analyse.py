@@ -12,6 +12,7 @@ Version:
     - 0.1 (2020-11-04)
 """
 
+import os
 import glob
 import argparse
 import matplotlib.pyplot as plt
@@ -20,23 +21,29 @@ import numpy as np
 
 from cell import Cell
 
-def plot(step, c, cells, output):
+def plot(step, c, cells, output, discrete=False):
     fig, ax = plt.subplots(figsize=(16, 16))
     
-    c_threshold = cells[0].threshold_concentration
-    # define the colors
-    #cmap = mpl.colors.ListedColormap(['w', 'g'])
+    if discrete:
+        c_threshold = cells[0].threshold_concentration
+        # define the colors
+        #cmap = mpl.colors.ListedColormap(['w', 'g'])
 
-    # create a normalize object the describes the limits of
-    # each color
-    #if np.max(c) < c_threshold:
-    #    bounds = [0., 1.0, 1.0]
-    #else:
-    #    bounds = [0., c_threshold / np.max(c), 1.0]
-    #norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+        # create a normalize object the describes the limits of
+        # each color
+        #if np.max(c) < c_threshold:
+        #    bounds = [0., 1.0, 1.0]
+        #else:
+        #    bounds = [0., c_threshold / np.max(c), 1.0]
+        #norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-    #im = ax.imshow(c.T, interpolation='none', label="cAMP", cmap=cmap, norm=norm)
-    im = ax.imshow(c.T, interpolation='none')
+        #im = ax.imshow(c.T, interpolation='none', label="cAMP", cmap=cmap, norm=norm)
+
+        cut_c = (c.T > c_threshold) * 1
+        im = ax.imshow(cut_c, interpolation='none', cmap=plt.cm.get_cmap("gray"))
+    else:
+        im = ax.imshow(c.T, interpolation='none')
+
     cb = fig.colorbar(im)
     cb.set_label("cAMP", fontsize=16)    
 
@@ -74,6 +81,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-i', '--input', help="Input state files base")
     parser.add_argument('-o', '--output', help="Output plots base path")
+    parser.add_argument('-d', '--discrete', help="Mode of plot, default: continuous, if set, then discrete", action="store_true")
     args = parser.parse_args()
 
     
@@ -84,6 +92,11 @@ def main():
     camp_files = sorted(camp_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
 
     for i, _ in enumerate(cells_files):
+        step = int(cells_files[i].split('_')[-1].split('.')[0])
+
+        if os.path.isfile("{}_{:04d}.png".format(args.output, step)):
+            continue
+
         cells = []
         with open(cells_files[i]) as cellsfh:
             for line in cellsfh:
@@ -92,9 +105,7 @@ def main():
 
         camp = np.loadtxt(camp_files[i])
 
-        step = int(cells_files[i].split('_')[-1].split('.')[0])
-
-        plot(step, camp, cells, args.output)
+        plot(step, camp, cells, args.output, args.discrete)
 
 
 if __name__ == "__main__":

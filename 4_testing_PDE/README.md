@@ -25,7 +25,7 @@ Here I'm testing the diffusion equation without cells under different setups.
 
 ## Diffusion equation with alywas on beacon and with cells and 1/2 timestep
 
-![movie](movie_diffusion_test_always_beacon_with_cells_with_lower_timestep.gif)
+![movie](movie_diffusion_test_always_beacon_with_cells_lower_timestep.gif)
 
 
 
