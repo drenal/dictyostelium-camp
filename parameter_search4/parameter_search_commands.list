@@ -1,0 +1,7 @@
+cd sim_1_0.1_0.2_20_6000_2_20; ../../dictyostelium.py --output simulation --lattice 1 --gamma 0.1 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 100 --steps 5000 --sampling 100
+cd sim_1_0.11_0.2_20_6000_2_20; ../../dictyostelium.py --output simulation --lattice 1 --gamma 0.11 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 100 --steps 5000 --sampling 100
+cd sim_1_0.115_0.2_20_6000_2_20; ../../dictyostelium.py --output simulation --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 100 --steps 5000 --sampling 100
+cd sim_1_0.12_0.2_20_6000_2_20; ../../dictyostelium.py --output simulation --lattice 1 --gamma 0.12 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 100 --steps 5000 --sampling 100
+cd sim_1_0.125_0.2_20_6000_2_20; ../../dictyostelium.py --output simulation --lattice 1 --gamma 0.125 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 100 --steps 5000 --sampling 100
+cd sim_1_0.13_0.2_20_6000_2_20; ../../dictyostelium.py --output simulation --lattice 1 --gamma 0.13 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 100 --steps 5000 --sampling 100
+cd sim_1_0.135_0.2_20_6000_2_20; ../../dictyostelium.py --output simulation --lattice 1 --gamma 0.135 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 100 --steps 5000 --sampling 100
