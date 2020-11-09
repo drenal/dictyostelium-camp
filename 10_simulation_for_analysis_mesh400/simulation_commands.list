@@ -1,0 +1,10 @@
+../dictyostelium.py --output simulation01 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation02 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation03 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation04 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation05 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation06 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation07 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation08 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation09 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
+../dictyostelium.py --output simulation10 --lattice 1 --gamma 0.115 --rho 0.2 --threshold 20 --camp 6000 --tau 2 --recovery 20 --mesh 400 --steps 8000 --sampling 100
